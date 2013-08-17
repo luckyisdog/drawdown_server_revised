@@ -27,7 +27,6 @@ class mysql_connection{
 		this->database_location = database_location;
 	}
 	bool connect();
-	bool something();
 	bool savePlayer(player requested_player, int database_id);
 	bool loginPlayer(char* username, char* password);
 };
