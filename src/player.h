@@ -14,6 +14,9 @@ class player{
 public:
 	int socket;
 	int database_id;
+	int facebook_id;
+	//online, offline, in_game, in_queue
+	std::string status;
 	std::string display_name;
 	std::string profile_picture;
 	int value_diamonds;
@@ -38,6 +41,7 @@ public:
 	void increasePoints(int amount);
 	void removeSOS(int amount);
 	void increaseSOS(int amount);
+	void setStatus(std::string status);
 	int getDiamonds();
 	int getPoints();
 	int getSOS();

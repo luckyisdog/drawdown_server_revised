@@ -67,7 +67,15 @@ void* requestThread(void*){
 		sem_wait(&request_sem);
 		if(requests.size() > 0){
 			if(requests[0].action == "LOGIN"){
-				player new_player = my_mysql.loginPlayer(requests[0].attributes[0], requests[0].attributes[1]);
+				player login_player = my_mysql.loginPlayer(requests[0].attributes[0], requests[0].attributes[1]);
+				if(login_player.display_name == "INCORRECT_LOGIN"){
+					sendMessage(requests[0].socket, "INCORRECT_LOGIN");
+				}else{
+					login_player.socket = requests[0].socket;
+					login_player.status = "online";
+					sendMessage(requests[0].socket,"SUCCESSFUL_LOGIN;\0");
+					online_players.push_back(login_player);
+				}
 			}
 			if (requests[0].action == "REGISTER"){
 				player new_player = my_mysql.newPlayer(requests[0].attributes[0], requests[0].attributes[1], requests[0].attributes[1]);
@@ -75,6 +83,7 @@ void* requestThread(void*){
 					sendMessage(requests[0].socket,"ALREADY_REGISTERED;\0");
 				}else{
 					new_player.socket = requests[0].socket;
+					new_player.status = "online";
 					sendMessage(requests[0].socket,"SUCCESSFUL_LOGIN;\0");
 					online_players.push_back(new_player);
 				}

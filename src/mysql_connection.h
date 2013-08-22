@@ -38,10 +38,11 @@ public:
 	bool connect();
 	//WITHOUT FACEBOOK COMMANDS
 	bool checkRegistered(std::string email);
+	int checkLogin(std::string email, std::string password);
 	player newPlayer(std::string email, std::string password, std::string display_name);
 	bool savePlayer(player requested_player, int database_id);
 	player loginPlayer(std::string email, std::string password);
-private:
+
 
 };
 

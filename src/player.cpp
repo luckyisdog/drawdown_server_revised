@@ -51,3 +51,7 @@ int player::getSocket(){
 	return this->socket;
 
 }
+
+void player::setStatus(std::string status){
+	this->status = status;
+}
