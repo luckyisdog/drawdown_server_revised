@@ -13,6 +13,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/time.h>
+#include <semaphore.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <stdio.h>
@@ -27,7 +28,7 @@
 #include <fstream>
 #include <poll.h>
 #include "player.h"
-#include "mysql_player_login.h"
+#include "mysql_connection.h"
 #define PORT 6666
 #define BUFFSIZE 255
 
@@ -42,11 +43,46 @@
 
 using namespace std;
 
-
+mysql_connection my_mysql = mysql_connection("drawdown_db", "root", "wierdo", "127.0.0.1");
 int master_socket;
-vector<player*> online_players;
+vector<player> online_players;
 bool server_online = false;
+sem_t request_sem;
 
+struct request{
+	int socket;
+	string action;
+	vector<string> attributes;
+};
+vector<request> requests;
+void sendMessage(int socket, char* message){
+				if (send(socket, message, strlen(message), 0)
+						!= strlen(message)) {
+					perror("send");
+				}
+}
+void* requestThread(void*){
+
+	while(server_online){
+		sem_wait(&request_sem);
+		if(requests.size() > 0){
+			if(requests[0].action == "LOGIN"){
+				player new_player = my_mysql.loginPlayer(requests[0].attributes[0], requests[0].attributes[1]);
+			}
+			if (requests[0].action == "REGISTER"){
+				player new_player = my_mysql.newPlayer(requests[0].attributes[0], requests[0].attributes[1], requests[0].attributes[1]);
+				if(new_player.display_name == "ALREADY_REGISTERED"){
+					sendMessage(requests[0].socket,"ALREADY_REGISTERED;\0");
+				}else{
+					new_player.socket = requests[0].socket;
+					sendMessage(requests[0].socket,"SUCCESSFUL_LOGIN;\0");
+					online_players.push_back(new_player);
+				}
+			}
+			requests.erase(requests.begin());
+		}
+	}
+}
 void* messageThread(void*){
 	vector<pollfd> poll_sockets;
 	pollfd* poll_sockets_ptr;
@@ -78,11 +114,7 @@ void* messageThread(void*){
 						<< inet_ntoa(client_address.sin_addr) << ":"
 						<< ntohs(client_address.sin_port) << ")" << endl;
 				cout << "Connected count (including server): " << poll_sockets.size() << endl;
-				char* send_message = "SUCCESSFUL_CONNECTION;\0";
-				if (send(new_socket, send_message, strlen(send_message), 0)
-						!= strlen(send_message)) {
-					perror("send");
-				}
+			sendMessage(new_socket,"SUCCESSFUL_CONNECTION;\0");
 
 			}
 
@@ -92,7 +124,37 @@ void* messageThread(void*){
 				if(poll_sockets[i].revents & POLLIN){
 					char buffer[BUFFSIZE];
 					if ((read(poll_sockets[i].fd, buffer, BUFFSIZE)) != 0) {
+						vector<string> client_messages;
+						char *msg_tok = strtok(buffer, ";");
+						while(msg_tok != NULL){
+							client_messages.push_back(msg_tok);
+							msg_tok = strtok(NULL, ";");
+						}
 
+						if (client_messages[0] == "LOGIN"){
+							if(client_messages.size() > 3){
+							request new_request;
+							new_request.socket = poll_sockets[i].fd;
+							new_request.action = client_messages[0];
+							new_request.attributes.push_back(client_messages[1]);
+							new_request.attributes.push_back(client_messages[2]);
+							requests.push_back(new_request);
+							sem_post(&request_sem);
+							}
+						}
+						if (client_messages[0] == "REGISTER"){
+							if (client_messages.size() > 4){
+								request new_request;
+								new_request.socket = poll_sockets[i].fd;
+								new_request.action = client_messages[0];
+								new_request.attributes.push_back(client_messages[1]);
+								new_request.attributes.push_back(client_messages[2]);
+								new_request.attributes.push_back(client_messages[3]);
+								requests.push_back(new_request);
+									sem_post(&request_sem);
+							}
+						}
+						delete msg_tok;
 					}else{
 						cout << "Client " << i << " has disconnected!" << endl;
 						poll_sockets.erase(poll_sockets.begin()+i);
@@ -120,9 +182,20 @@ int main(int argc, char* argv[]){
 		perror("listen");
 		return 1;
 	}
+	if(!my_mysql.connect()){
+		perror("mysql");
+		return 1;
+	}
+	if((sem_init(&request_sem, 0,0)) != 0){
+		perror("semaphore");
+		return 1;
+	}
 	server_online = true;
 	pthread_t t1;
+	pthread_t t2;
 	pthread_create(&t1, NULL, messageThread, NULL);
+	pthread_create(&t2, NULL, requestThread, NULL);
 	pthread_join (t1, NULL);
+	pthread_join (t2, NULL);
 	return 0;
 }

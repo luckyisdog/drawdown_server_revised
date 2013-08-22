@@ -41,10 +41,10 @@ int player::getPoints(){
 int player::getDatabaseId(){
 	return this->database_id;
 }
-char* player::getDisplayName(){
+std::string player::getDisplayName(){
 	return this->display_name;
 }
-char* player::getProfilePicture(){
+std::string player::getProfilePicture(){
 	return this->profile_picture;
 }
 int player::getSocket(){

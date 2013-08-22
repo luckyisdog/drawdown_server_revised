@@ -5,6 +5,8 @@
  *      Author: lucky
  */
 #include "player.h"
+#include <iostream>
+#include <sstream>
 #include <mysql.h>
 #include <my_global.h>
 #include <my_sys.h>
@@ -12,9 +14,16 @@
 #ifndef MYSQL_CONNECTION_H_
 #define MYSQL_CONNECTION_H_
 
+#define DEFAULT_DIAMONDS 5
+#define DEFAULT_POINTS 0
+#define DEFAULT_WINS 0
+#define DEFAULT_SOS 3
+
 
 
 class mysql_connection{
+
+public:
 	MYSQL *conn;
 	char* database_name;
 	char* database_user;
@@ -27,9 +36,13 @@ class mysql_connection{
 		this->database_location = database_location;
 	}
 	bool connect();
-	bool WAZZZUP();
+	//WITHOUT FACEBOOK COMMANDS
+	bool checkRegistered(std::string email);
+	player newPlayer(std::string email, std::string password, std::string display_name);
 	bool savePlayer(player requested_player, int database_id);
-	bool loginPlayer(char* username, char* password);
+	player loginPlayer(std::string email, std::string password);
+private:
+
 };
 
 
